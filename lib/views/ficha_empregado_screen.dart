@@ -117,6 +117,24 @@ class _FichaEmpregadoScreenState extends State<FichaEmpregadoScreen> {
     await _atualizarResumoEHistorico(_funcionarioSelecionado!.id!);
   }
 
+  Future<void> _excluirRegistro(RegistroPontoModel item) async {
+    if (item.id == null) return;
+
+    await _pontoRepo.excluirRegistroPonto(item.id!);
+    await _atualizarResumoEHistorico(_funcionarioSelecionado!.id!);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Registro excluído da memória e do histórico com sucesso!',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _abrirModalAdicionarDesconto() {
     if (_funcionarioSelecionado == null) return;
 
@@ -225,231 +243,306 @@ class _FichaEmpregadoScreenState extends State<FichaEmpregadoScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _funcionarios.isEmpty
           ? const Center(child: Text('Cadastre funcionários na Home primeiro.'))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DropdownButtonFormField<FuncionarioModel>(
-                    initialValue: _funcionarioSelecionado,
-                    decoration: const InputDecoration(
-                      labelText: 'Selecione o Funcionário / Aluno',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person),
-                      isDense: true,
-                    ),
-                    items: _funcionarios.map((f) {
-                      return DropdownMenuItem(value: f, child: Text(f.nome));
-                    }).toList(),
-                    onChanged: (novoFunc) async {
-                      if (novoFunc != null) {
-                        setState(() => _funcionarioSelecionado = novoFunc);
-                        await _atualizarResumoEHistorico(novoFunc.id!);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Dias Trabalhados: $_diasTrabalhados',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Text(
-                                'Bruto: R\$ ${valorBruto.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Descontos / Vales:',
-                                style: TextStyle(fontSize: 13),
-                              ),
-                              Text(
-                                '- R\$ ${_totalDescontos.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const Divider(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Total Líquido:',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'R\$ ${valorLiquido.toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue[800],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 36,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[700],
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.zero,
-                              ),
-                              icon: const Icon(
-                                Icons.check_circle_outline,
-                                size: 16,
-                              ),
-                              label: const Text(
-                                'Pagar Todos os Dias Pendentes',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                              onPressed: _pagarTodosDias,
-                            ),
-                          ),
-                        ],
+          : SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<FuncionarioModel>(
+                      initialValue: _funcionarioSelecionado,
+                      decoration: const InputDecoration(
+                        labelText: 'Selecione o Funcionário / Aluno',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                        isDense: true,
                       ),
+                      items: _funcionarios.map((f) {
+                        return DropdownMenuItem(value: f, child: Text(f.nome));
+                      }).toList(),
+                      onChanged: (novoFunc) async {
+                        if (novoFunc != null) {
+                          setState(() => _funcionarioSelecionado = novoFunc);
+                          await _atualizarResumoEHistorico(novoFunc.id!);
+                        }
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Calendário / Histórico de Ponto',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
-                        ),
+                    const SizedBox(height: 8),
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      TextButton.icon(
-                        onPressed: _abrirModalAdicionarDesconto,
-                        icon: const Icon(
-                          Icons.money_off,
-                          size: 14,
-                          color: Colors.red,
-                        ),
-                        label: const Text(
-                          'Lançar Vale',
-                          style: TextStyle(color: Colors.red, fontSize: 11),
-                        ),
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(50, 30),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  _historico.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(30.0),
-                          child: Center(
-                            child: Text('Nenhum registro de ponto encontrado.'),
-                          ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: _historico.length,
-                          itemBuilder: (context, index) {
-                            final item = _historico[index];
-                            final isPontoTrabalho = item.horaInicio != null;
-                            final isPago = item.pago == 1;
-
-                            Color corIndicador = Colors.orange;
-                            if (isPontoTrabalho) {
-                              corIndicador = isPago ? Colors.green : Colors.red;
-                            }
-
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 6),
-                              elevation: 1,
-                              child: ListTile(
-                                dense: true,
-                                leading: CircleAvatar(
-                                  backgroundColor: corIndicador.withAlpha(50),
-                                  radius: 16,
-                                  child: Icon(
-                                    isPontoTrabalho
-                                        ? Icons.calendar_today
-                                        : Icons.money_off,
-                                    color: corIndicador,
-                                    size: 16,
-                                  ),
-                                ),
-                                title: Text(
-                                  '${item.data} (${item.diaSemana})',
-                                  style: TextStyle(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Dias Trabalhados: $_diasTrabalhados',
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    decoration: isPago
-                                        ? TextDecoration.lineThrough
-                                        : TextDecoration.none,
-                                    color: isPago
-                                        ? Colors.grey[700]
-                                        : Colors.black87,
+                                    fontSize: 13,
                                   ),
                                 ),
-                                subtitle: Text(
-                                  isPontoTrabalho
-                                      ? 'Início: ${item.horaInicio} | Fim: ${item.horaFim ?? 'Em curso'} • ${isPago ? 'PAGO' : 'PENDENTE'}'
-                                      : 'Desconto / Vale: R\$ ${item.desconto.toStringAsFixed(2)}',
+                                Text(
+                                  'Bruto: R\$ ${valorBruto.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Descontos / Vales:',
+                                  style: TextStyle(fontSize: 13),
+                                ),
+                                Text(
+                                  '- R\$ ${_totalDescontos.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total Líquido:',
                                   style: TextStyle(
-                                    fontSize: 11,
-                                    color: isPontoTrabalho && !isPago
-                                        ? Colors.red[700]
-                                        : Colors.black87,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                trailing: IconButton(
-                                  icon: Icon(
-                                    isPago
-                                        ? Icons.check_circle
-                                        : Icons.radio_button_unchecked,
-                                    color: corIndicador,
-                                    size: 24,
+                                Text(
+                                  'R\$ ${valorLiquido.toStringAsFixed(2)}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue[800],
                                   ),
-                                  onPressed: () =>
-                                      _alternarStatusPagamento(item),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 36,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green[700],
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                icon: const Icon(
+                                  Icons.check_circle_outline,
+                                  size: 16,
+                                ),
+                                label: const Text(
+                                  'Pagar Todos os Dias Pendentes',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                onPressed: _pagarTodosDias,
                               ),
-                            );
-                          },
+                            ),
+                          ],
                         ),
-                ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Calendário / Histórico ',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _abrirModalAdicionarDesconto,
+                          icon: const Icon(
+                            Icons.money_off,
+                            size: 14,
+                            color: Colors.red,
+                          ),
+                          label: const Text(
+                            'Lançar Vale',
+                            style: TextStyle(color: Colors.red, fontSize: 11),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(50, 30),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    _historico.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(30.0),
+                            child: Center(
+                              child: Text(
+                                'Nenhum registro de ponto encontrado.',
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true, // <-- Essencial para calcular a altura correta dentro do scroll
+                            physics: const NeverScrollableScrollPhysics(), // <-- Deixa o Scroll principal controlar a tela
+                            itemCount: _historico.length,
+                            itemBuilder: (context, index) {
+                              final item = _historico[index];
+                              final isPontoTrabalho = item.horaInicio != null;
+                              final isPago = item.pago == 1;
+
+                              Color corIndicador = Colors.orange;
+                              if (isPontoTrabalho) {
+                                corIndicador = isPago
+                                    ? Colors.green
+                                    : Colors.red;
+                              }
+
+                              return Dismissible(
+                                key: Key(item.id.toString()),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20.0),
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.delete,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                      Text(
+                                        'Excluir',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                confirmDismiss: (direction) async {
+                                  return await showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: const Text("Confirmar Exclusão"),
+                                        content: const Text(
+                                          "Deseja realmente apagar este registro do histórico e da memória do celular?",
+                                        ),
+                                        actions: <Widget>[
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(context)
+                                                    .pop(false),
+                                            child: const Text("Cancelar"),
+                                          ),
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                              foregroundColor: Colors.white,
+                                            ),
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(true),
+                                            child: const Text("Excluir"),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                onDismissed: (direction) {
+                                  _excluirRegistro(item);
+                                },
+                                child: Card(
+                                  margin: const EdgeInsets.only(bottom: 6),
+                                  elevation: 1,
+                                  child: ListTile(
+                                    dense: true,
+                                    leading: CircleAvatar(
+                                      backgroundColor: corIndicador.withAlpha(
+                                        50,
+                                      ),
+                                      radius: 16,
+                                      child: Icon(
+                                        isPontoTrabalho
+                                            ? Icons.calendar_today
+                                            : Icons.money_off,
+                                        color: corIndicador,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      '${item.data} (${item.diaSemana})',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        decoration: isPago
+                                            ? TextDecoration.lineThrough
+                                            : TextDecoration.none,
+                                        color: isPago
+                                            ? Colors.grey[700]
+                                            : Colors.black87,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      isPontoTrabalho
+                                          ? 'Início: ${item.horaInicio} | Fim: ${item.horaFim ?? 'Em curso'} • ${isPago ? 'PAGO' : 'PENDENTE'}'
+                                          : 'Desconto / Vale: R\$ ${item.desconto.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isPontoTrabalho && !isPago
+                                            ? Colors.red[700]
+                                            : Colors.black87,
+                                      ),
+                                    ),
+                                    trailing: IconButton(
+                                      icon: Icon(
+                                        isPago
+                                            ? Icons.check_circle
+                                            : Icons.radio_button_unchecked,
+                                        color: corIndicador,
+                                        size: 24,
+                                      ),
+                                      onPressed: () =>
+                                          _alternarStatusPagamento(item),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                    const SizedBox(
+                      height: 20,
+                    ), // Folga extra de segurança na base
+                  ],
+                ),
               ),
             ),
     );

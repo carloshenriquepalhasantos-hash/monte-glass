@@ -121,100 +121,108 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (modalContext) {
-        return Padding(
-          padding: EdgeInsets.only(
-            top: 20,
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.of(modalContext).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Cadastrar Novo Funcionário',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 15),
-              TextField(
-                controller: nomeController,
-                decoration: const InputDecoration(
-                  labelText: 'Nome Completo',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: tipoPagamento,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo de Pagamento',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.payments),
-                ),
-                items: ['Diária', 'Hora'].map((tipo) {
-                  return DropdownMenuItem(value: tipo, child: Text(tipo));
-                }).toList(),
-                onChanged: (val) {
-                  if (val != null) tipoPagamento = val;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: valorController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Valor Base (R\$)',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.attach_money),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(modalContext).colorScheme.primary,
-                    foregroundColor: Colors.white,
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: 20,
+              left: 20,
+              right: 20,
+              bottom: MediaQuery.of(modalContext).viewInsets.bottom + 20,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Cadastrar Novo Funcionário',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
-                  onPressed: () async {
-                    if (nomeController.text.isNotEmpty &&
-                        valorController.text.isNotEmpty) {
-                      final valor =
-                          double.tryParse(
-                            valorController.text.replaceAll(',', '.'),
-                          ) ??
-                          0.0;
-                      final novoFunc = FuncionarioModel(
-                        nome: nomeController.text,
-                        tipoPagamento: tipoPagamento,
-                        valorBase: valor,
-                      );
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: nomeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome Completo',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: tipoPagamento,
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo de Pagamento',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.payments),
+                    ),
+                    items: ['Diária', 'Hora'].map((tipo) {
+                      return DropdownMenuItem(value: tipo, child: Text(tipo));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) tipoPagamento = val;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: valorController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Valor Base (R\$)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.attach_money),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(modalContext)
+                            .colorScheme
+                            .primary,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () async {
+                        if (nomeController.text.isNotEmpty &&
+                            valorController.text.isNotEmpty) {
+                          final valor =
+                              double.tryParse(
+                                valorController.text.replaceAll(',', '.'),
+                              ) ??
+                              0.0;
+                          final novoFunc = FuncionarioModel(
+                            nome: nomeController.text,
+                            tipoPagamento: tipoPagamento,
+                            valorBase: valor,
+                          );
 
-                      final navigator = Navigator.of(modalContext);
-                      final messenger = ScaffoldMessenger.of(modalContext);
+                          final navigator = Navigator.of(modalContext);
+                          final messenger = ScaffoldMessenger.of(modalContext);
 
-                      await _funcionarioRepo.inserirFuncionario(novoFunc);
+                          await _funcionarioRepo.inserirFuncionario(novoFunc);
 
-                      if (modalContext.mounted) {
-                        navigator.pop();
-                        _carregarFuncionarios();
-                        messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Funcionário cadastrado no SQLite!'),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  child: const Text('Salvar Funcionário'),
-                ),
+                          if (modalContext.mounted) {
+                            navigator.pop();
+                            _carregarFuncionarios();
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Funcionário cadastrado no SQLite!',
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Salvar Funcionário'),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },
@@ -567,191 +575,197 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
     final estaTrabalhando = PontoAtivoGlobal.emAndamento[funcId] == true;
     final segundosTrabalho = PontoAtivoGlobal.segundosAtivos[funcId] ?? 0;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        top: 20,
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: 20,
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Ponto: ${widget.funcionario.nome}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ponto: ${widget.funcionario.nome}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (_emIntervalo)
+                    const Chip(
+                      label: Text(
+                        'INTERVALO',
+                        style: TextStyle(color: Colors.white, fontSize: 10),
+                      ),
+                      backgroundColor: Colors.blue,
+                    )
+                  else if (estaTrabalhando)
+                    const Chip(
+                      label: Text(
+                        'TRABALHANDO',
+                        style: TextStyle(color: Colors.white, fontSize: 10),
+                      ),
+                      backgroundColor: Colors.green,
+                    ),
+                ],
               ),
-              if (_emIntervalo)
-                const Chip(
-                  label: Text(
-                    'INTERVALO',
-                    style: TextStyle(color: Colors.white, fontSize: 10),
-                  ),
-                  backgroundColor: Colors.blue,
-                )
-              else if (estaTrabalhando)
-                const Chip(
-                  label: Text(
-                    'TRABALHANDO',
-                    style: TextStyle(color: Colors.white, fontSize: 10),
-                  ),
-                  backgroundColor: Colors.green,
+              const Divider(height: 20),
+              DropdownButtonFormField<String>(
+                initialValue: diaSemana,
+                decoration: const InputDecoration(
+                  labelText: 'Dia da Semana',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.calendar_today),
                 ),
-            ],
-          ),
-          const Divider(height: 20),
-          DropdownButtonFormField<String>(
-            initialValue: diaSemana,
-            decoration: const InputDecoration(
-              labelText: 'Dia da Semana',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.calendar_today),
-            ),
-            items: diasSemana
-                .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                .toList(),
-            onChanged: (val) {
-              if (val != null) setState(() => diaSemana = val);
-            },
-          ),
-          const SizedBox(height: 15),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade300),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Trabalho',
-                        style: TextStyle(fontSize: 11, color: Colors.green),
+                items: diasSemana
+                    .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => diaSemana = val);
+                },
+              ),
+              const SizedBox(height: 15),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade300),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatarTempo(segundosTrabalho),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      if (_horarioInicio != null)
-                        Text(
-                          'Início: ${formatHora.format(_horarioInicio!)}',
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Trabalho',
+                            style: TextStyle(fontSize: 11, color: Colors.green),
                           ),
-                        ),
-                    ],
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatarTempo(segundosTrabalho),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                          if (_horarioInicio != null)
+                            Text(
+                              'Início: ${formatHora.format(_horarioInicio!)}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade300),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'Intervalo',
+                            style: TextStyle(fontSize: 11, color: Colors.blue),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatarTempo(_segundosIntervalo),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
+                          const Text(
+                            'Descanso',
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: observacaoController,
+                decoration: const InputDecoration(
+                  labelText: 'Observação / Obra',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.notes),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.shade300),
+              const SizedBox(height: 16),
+              if (!estaTrabalhando && !_emIntervalo && segundosTrabalho == 0)
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.play_arrow),
+                    label: const Text('Iniciar Expediente'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[700],
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _iniciarJornada,
                   ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Intervalo',
-                        style: TextStyle(fontSize: 11, color: Colors.blue),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatarTempo(_segundosIntervalo),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue,
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          icon: Icon(
+                            _emIntervalo ? Icons.play_arrow : Icons.pause,
+                          ),
+                          label: Text(_emIntervalo ? 'Voltar' : 'Intervalo'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[700],
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: _alternarIntervalo,
                         ),
                       ),
-                      const Text(
-                        'Descanso',
-                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.stop),
+                          label: const Text('Fim'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red[700],
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: _encerrarExpediente,
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: observacaoController,
-            decoration: const InputDecoration(
-              labelText: 'Observação / Obra',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.notes),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (!estaTrabalhando && !_emIntervalo && segundosTrabalho == 0)
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Iniciar Expediente'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[700],
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: _iniciarJornada,
-              ),
-            )
-          else
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      icon: Icon(_emIntervalo ? Icons.play_arrow : Icons.pause),
-                      label: Text(_emIntervalo ? 'Voltar' : 'Intervalo'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[700],
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _alternarIntervalo,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 48,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.stop),
-                      label: const Text('Fim'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[700],
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: _encerrarExpediente,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-        ],
+        ),
       ),
     );
   }
