@@ -28,7 +28,6 @@ class PontoAtivoGlobal {
         }
       });
 
-      // Se ninguém mais estiver trabalhando, cancela o timer global para poupar bateria
       if (!temAlguemTrabalhando) {
         _timerGlobal?.cancel();
         _timerGlobal = null;
@@ -63,7 +62,6 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
     _initForegroundTask();
     _carregarFuncionarios();
 
-    // Atualiza a tela a cada segundo para mover os segundos na lista principal
     _refreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && PontoAtivoGlobal.emAndamento.containsValue(true)) {
         setState(() {});
@@ -135,8 +133,8 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Cadastrar Novo Funcionário',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    'Cadastrar Novo Funcionário / Aluno',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 15),
                   TextField(
@@ -151,7 +149,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: tipoPagamento,
                     decoration: const InputDecoration(
-                      labelText: 'Tipo de Pagamento',
+                      labelText: 'Tipo de Cobrança / Pagamento',
                       border: OutlineInputBorder(),
                       prefixIcon: Icon(Icons.payments),
                     ),
@@ -210,14 +208,14 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                             messenger.showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                  'Funcionário cadastrado no SQLite!',
+                                  'Cadastrado com sucesso no SQLite!',
                                 ),
                               ),
                             );
                           }
                         }
                       },
-                      child: const Text('Salvar Funcionário'),
+                      child: const Text('Salvar Cadastro'),
                     ),
                   ),
                 ],
@@ -266,7 +264,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
           IconButton(
             icon: const Icon(Icons.person_add, color: Colors.white),
             onPressed: _abrirModalNovoFuncionario,
-            tooltip: 'Registrar Funcionário',
+            tooltip: 'Cadastrar Novo',
           ),
         ],
       ),
@@ -284,14 +282,14 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Nenhum funcionário cadastrado no banco local.',
+                    'Nenhum registo cadastrado no banco local.',
                     style: TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: _abrirModalNovoFuncionario,
                     icon: const Icon(Icons.add),
-                    label: const Text('Cadastrar Primeiro Funcionário'),
+                    label: const Text('Cadastrar Primeiro'),
                   ),
                 ],
               ),
@@ -302,7 +300,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Equipe Cadastrada',
+                    'Equipe / Alunos Cadastrados',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -399,6 +397,7 @@ class PontoCronometroWidget extends StatefulWidget {
 
 class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
   String diaSemana = 'Segunda-feira';
+  late String tipoSelecionado;
   final List<String> diasSemana = [
     'Segunda-feira',
     'Terça-feira',
@@ -410,6 +409,7 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
   ];
 
   final TextEditingController observacaoController = TextEditingController();
+  final TextEditingController valorCustomController = TextEditingController();
   DateTime? _horarioInicio;
   int _segundosIntervalo = 0;
   bool _emIntervalo = false;
@@ -419,6 +419,11 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
   @override
   void initState() {
     super.initState();
+    tipoSelecionado = widget.funcionario.tipoPagamento;
+    valorCustomController.text = widget.funcionario.valorBase.toStringAsFixed(
+      2,
+    );
+
     try {
       final hoje = DateFormat('EEEE', 'pt_BR').format(DateTime.now());
       final formatado = hoje[0].toUpperCase() + hoje.substring(1);
@@ -433,7 +438,6 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
       diaSemana = 'Segunda-feira';
     }
 
-    // Atualiza o modal a cada segundo para refletir os segundos globais
     _modalRefreshTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -444,10 +448,50 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
     _timerIntervalo?.cancel();
     _modalRefreshTimer?.cancel();
     observacaoController.dispose();
+    valorCustomController.dispose();
     super.dispose();
   }
 
-  Future<void> _iniciarJornada() async {
+  Future<void> _registrarDiariaDireta() async {
+    final funcId = widget.funcionario.id ?? 0;
+    final dataHoje = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final valorInformado =
+        double.tryParse(valorCustomController.text.replaceAll(',', '.')) ??
+        widget.funcionario.valorBase;
+
+    final novoPonto = RegistroPontoModel(
+      funcionarioId: funcId,
+      data: dataHoje,
+      horaInicio: '08:00',
+      horaFim: '18:00',
+      diaSemana: diaSemana,
+      desconto: 0.0,
+      pago: 0,
+      observacao: observacaoController.text.isNotEmpty
+          ? '${observacaoController.text} (Diária: R\$ ${valorInformado.toStringAsFixed(2)})'
+          : 'Diária Registrada (R\$ ${valorInformado.toStringAsFixed(2)})',
+    );
+
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    await widget.pontoRepo.inserirRegistroPonto(novoPonto);
+    widget.onPontoAtualizado();
+
+    if (mounted) {
+      navigator.pop();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Diária de ${widget.funcionario.nome} enviada para o histórico!',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _iniciarJornadaHora() async {
     try {
       await FlutterForegroundTask.requestNotificationPermission();
     } catch (_) {}
@@ -464,7 +508,7 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
 
     try {
       await FlutterForegroundTask.startService(
-        notificationTitle: 'Monte Glass - Ponto Ativo',
+        notificationTitle: 'Monte Glass - Ponto Ativo (Hora)',
         notificationText:
             'Expediente em andamento para ${widget.funcionario.nome}',
       );
@@ -484,7 +528,7 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
 
       try {
         FlutterForegroundTask.updateService(
-          notificationTitle: 'Em Intervalo (Almoço/Descanso)',
+          notificationTitle: 'Em Intervalo',
           notificationText: 'Funcionário: ${widget.funcionario.nome}',
         );
       } catch (_) {}
@@ -499,21 +543,14 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
       PontoAtivoGlobal.emAndamento[funcId] = true;
       setState(() => _emIntervalo = false);
       widget.onPontoAtualizado();
-
-      try {
-        FlutterForegroundTask.updateService(
-          notificationTitle: 'Trabalhando: ${widget.funcionario.nome}',
-          notificationText:
-              'Tempo: ${_formatarTempo(PontoAtivoGlobal.segundosAtivos[funcId] ?? 0)}',
-        );
-      } catch (_) {}
     }
   }
 
-  Future<void> _encerrarExpediente() async {
+  Future<void> _encerrarExpedienteHora() async {
     _timerIntervalo?.cancel();
 
     final funcId = widget.funcionario.id ?? 0;
+    final segundosTrabalho = PontoAtivoGlobal.segundosAtivos[funcId] ?? 0;
     PontoAtivoGlobal.pararTrabalho(funcId);
     widget.onPontoAtualizado();
 
@@ -532,6 +569,12 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
         : '00:00';
     final strFim = formatHora.format(horaFim);
 
+    final valorBaseHora =
+        double.tryParse(valorCustomController.text.replaceAll(',', '.')) ??
+        widget.funcionario.valorBase;
+    final horasTrabalhadas = segundosTrabalho / 3600.0;
+    final valorTotalHoras = horasTrabalhadas * valorBaseHora;
+
     final novoPonto = RegistroPontoModel(
       funcionarioId: funcId,
       data: dataHoje,
@@ -539,9 +582,10 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
       horaFim: strFim,
       diaSemana: diaSemana,
       desconto: 0.0,
+      pago: 0,
       observacao: observacaoController.text.isNotEmpty
-          ? '${observacaoController.text} (Intervalo: ${(_segundosIntervalo ~/ 60)} min)'
-          : 'Intervalo: ${(_segundosIntervalo ~/ 60)} min',
+          ? '${observacaoController.text} (${(horasTrabalhadas).toStringAsFixed(2)}h - R\$ ${valorTotalHoras.toStringAsFixed(2)})'
+          : 'Total: ${(horasTrabalhadas).toStringAsFixed(2)}h (R\$ ${valorTotalHoras.toStringAsFixed(2)})',
     );
 
     final navigator = Navigator.of(context);
@@ -554,8 +598,9 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Expediente de ${widget.funcionario.nome} encerrado e salvo!',
+            'Expediente por hora encerrado e guardado no histórico!',
           ),
+          backgroundColor: Colors.blue[800],
         ),
       );
     }
@@ -574,6 +619,7 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
     final funcId = widget.funcionario.id ?? 0;
     final estaTrabalhando = PontoAtivoGlobal.emAndamento[funcId] == true;
     final segundosTrabalho = PontoAtivoGlobal.segundosAtivos[funcId] ?? 0;
+    final isDiaria = tipoSelecionado.toLowerCase() == 'diária';
 
     return SafeArea(
       child: Padding(
@@ -598,22 +644,27 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (_emIntervalo)
-                    const Chip(
-                      label: Text(
-                        'INTERVALO',
-                        style: TextStyle(color: Colors.white, fontSize: 10),
+                  // Seletor para alternar entre Diária e Hora diretamente no modal de ponto
+                  SizedBox(
+                    height: 36,
+                    child: DropdownButton<String>(
+                      value: tipoSelecionado,
+                      dropdownColor: Colors.white,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Colors.black87,
                       ),
-                      backgroundColor: Colors.blue,
-                    )
-                  else if (estaTrabalhando)
-                    const Chip(
-                      label: Text(
-                        'TRABALHANDO',
-                        style: TextStyle(color: Colors.white, fontSize: 10),
-                      ),
-                      backgroundColor: Colors.green,
+                      items: ['Diária', 'Hora'].map((tipo) {
+                        return DropdownMenuItem(value: tipo, child: Text(tipo));
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => tipoSelecionado = val);
+                        }
+                      },
                     ),
+                  ),
                 ],
               ),
               const Divider(height: 20),
@@ -631,138 +682,193 @@ class _PontoCronometroWidgetState extends State<PontoCronometroWidget> {
                   if (val != null) setState(() => diaSemana = val);
                 },
               ),
-              const SizedBox(height: 15),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.green.shade300),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Trabalho',
-                            style: TextStyle(fontSize: 11, color: Colors.green),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatarTempo(segundosTrabalho),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          if (_horarioInicio != null)
-                            Text(
-                              'Início: ${formatHora.format(_horarioInicio!)}',
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.blue.shade300),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'Intervalo',
-                            style: TextStyle(fontSize: 11, color: Colors.blue),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatarTempo(_segundosIntervalo),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          ),
-                          const Text(
-                            'Descanso',
-                            style: TextStyle(fontSize: 10, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
               const SizedBox(height: 12),
+
+              // CAMPO DE VALOR CUSTOMIZADO (Serve tanto para diária quanto para hora)
               TextField(
-                controller: observacaoController,
-                decoration: const InputDecoration(
-                  labelText: 'Observação / Obra',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.notes),
+                controller: valorCustomController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: isDiaria
+                      ? 'Valor da Diária (R\$)'
+                      : 'Valor da Hora (R\$)',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.attach_money),
                 ),
               ),
-              const SizedBox(height: 16),
-              if (!estaTrabalhando && !_emIntervalo && segundosTrabalho == 0)
+              const SizedBox(height: 12),
+
+              // SE FOR DIÁRIA: Mostra botão direto para registrar no histórico
+              if (isDiaria) ...[
+                TextField(
+                  controller: observacaoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Observação / Obra',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.notes),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Iniciar Expediente'),
+                    icon: const Icon(Icons.save),
+                    label: const Text('Registar Diária no Histórico'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[700],
                       foregroundColor: Colors.white,
                     ),
-                    onPressed: _iniciarJornada,
+                    onPressed: _registrarDiariaDireta,
                   ),
-                )
-              else
+                ),
+              ]
+              // SE FOR HORA: Mostra os botões de cronômetro (Iniciar, Intervalo, Encerrar)
+              else ...[
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
-                      child: SizedBox(
-                        height: 48,
-                        child: ElevatedButton.icon(
-                          icon: Icon(
-                            _emIntervalo ? Icons.play_arrow : Icons.pause,
-                          ),
-                          label: Text(_emIntervalo ? 'Voltar' : 'Intervalo'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[700],
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: _alternarIntervalo,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade300),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Trabalho por Hora',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.green,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatarTempo(segundosTrabalho),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            if (_horarioInicio != null)
+                              Text(
+                                'Início: ${formatHora.format(_horarioInicio!)}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: SizedBox(
-                        height: 48,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.stop),
-                          label: const Text('Fim'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red[700],
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: _encerrarExpediente,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade300),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Intervalo',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _formatarTempo(_segundosIntervalo),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const Text(
+                              'Descanso',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: observacaoController,
+                  decoration: const InputDecoration(
+                    labelText: 'Observação / Obra',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.notes),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (!estaTrabalhando && !_emIntervalo && segundosTrabalho == 0)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Iniciar Contagem de Horas'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[700],
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _iniciarJornadaHora,
+                    ),
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton.icon(
+                            icon: Icon(
+                              _emIntervalo ? Icons.play_arrow : Icons.pause,
+                            ),
+                            label: Text(_emIntervalo ? 'Retomar' : 'Intervalo'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[700],
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: _alternarIntervalo,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.stop),
+                            label: const Text('Encerrar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red[700],
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: _encerrarExpedienteHora,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ],
           ),
         ),
